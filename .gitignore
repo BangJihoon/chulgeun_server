@@ -1,0 +1,9 @@
+# Local server credentials and runtime files
+config.json
+.env
+.env.*
+!.env.example
+node_modules/
+coverage/
+*.log
+.DS_Store

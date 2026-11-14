@@ -1,0 +1,12 @@
+{
+  "name": "chulgeun-master-server",
+  "private": true,
+  "version": "0.7.0",
+  "description": "Protected API server for chulgeun_master external APIs",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js"
+  }
+}
