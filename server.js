@@ -56,10 +56,11 @@ const VWORLD_PARCEL_REVERSE_URL = 'https://apis.vworld.kr/coord2jibun.do';
 const ODSAY_ROUTE_URL = 'https://api.odsay.com/v1/api/searchPubTransPathT';
 
 class ProxyError extends Error {
-  constructor(status, code, message) {
+  constructor(status, code, message, details) {
     super(message);
     this.status = status;
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -380,7 +381,12 @@ function classifyVWorldResponse(status, body) {
       responseStatus: responseStatus || 'UNKNOWN',
       upstreamCode,
     });
-    return new ProxyError(502, 'VWORLD_UPSTREAM_ERROR', 'VWorld 응답을 처리하지 못했습니다.');
+    return new ProxyError(
+      502,
+      'VWORLD_UPSTREAM_ERROR',
+      'VWorld 응답을 처리하지 못했습니다.',
+      { upstreamCode },
+    );
   }
   return null;
 }
@@ -648,6 +654,7 @@ async function handleRequest(request, response) {
     sendJson(response, proxyError.status, {
       error: proxyError.code,
       message: proxyError.message,
+      ...(proxyError.details ? { details: proxyError.details } : {}),
     });
   }
 }
