@@ -1,6 +1,11 @@
 [build]
   functions = "netlify/functions"
 
+[build.environment]
+  # These are non-secret runtime settings whose documented defaults are
+  # intentionally present in the server source and example configuration.
+  SECRETS_SCAN_OMIT_KEYS = "PORT,VWORLD_CONFIG_PATH,UPSTREAM_TIMEOUT_MS"
+
 [functions]
   node_bundler = "esbuild"
 

@@ -40,6 +40,8 @@ Flutter 앱은 `LIVE_TRANSIT_PROXY_URL`로 이 서버 주소를 사용하고 `BU
 
 Netlify에 배포할 때는 저장소 루트의 `netlify.toml`과 `netlify/functions/api.js`를 사용합니다. `/vworld`, `/route`, `/live` 요청은 공통 Function으로 전달되며, 인증키는 Netlify 환경변수에만 등록합니다. Netlify 사이트의 Deploy 설정에서 이 저장소를 연결하고 Functions가 포함된 최신 커밋을 배포한 뒤, 다음 주소를 앱의 `PROXY_BASE_URL`로 사용합니다.
 
+`PORT`, `VWORLD_CONFIG_PATH`, `UPSTREAM_TIMEOUT_MS`는 인증키가 아닌 런타임 설정이며 저장소의 기본값·예시에도 의도적으로 포함됩니다. Netlify Secret Scanning이 이 값들을 인증정보로 오인하지 않도록 `netlify.toml`에서 해당 환경변수 이름만 제외합니다. `ODSAY_API_KEY`, `VWORLD_API_KEY`, `DATA_GO_KR_BUS_KEY` 값은 계속 스캔 제외 대상이 아니며 소스·로그·응답에 넣지 않습니다.
+
     https://illustrious-bonbon-ca1054.netlify.app
 
 배포 후 먼저 `/route`, `/vworld`, `/live`에 POST 요청이 도달하는지 확인해야 합니다. 키가 없는 경우에도 서버는 키 값을 노출하지 않고 `SERVER_CONFIGURATION_ERROR`를 반환합니다.
