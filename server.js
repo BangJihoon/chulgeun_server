@@ -383,7 +383,10 @@ async function fetchVWorld(url, params, keyName = 'key') {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
-      const headers = {};
+      const headers = {
+        accept: 'application/json',
+        'user-agent': 'chulgeun-server/0.8',
+      };
       if (VWORLD_REGISTERED_DOMAIN) {
         headers.referer = VWORLD_REGISTERED_DOMAIN;
         headers.origin = VWORLD_REGISTERED_DOMAIN.replace(/\/$/, '');
@@ -399,6 +402,14 @@ async function fetchVWorld(url, params, keyName = 'key') {
       return body;
     } catch (error) {
       lastError = error;
+      if (!(error instanceof ProxyError)) {
+        console.error('VWorld upstream network failure', {
+          host: new URL(url).host,
+          attempt: attempt + 1,
+          errorName: error?.name || 'UnknownError',
+          errorCode: error?.cause?.code || error?.code || 'UNKNOWN',
+        });
+      }
       if (error instanceof ProxyError) {
         if (error.status >= 500 && attempt === 0) continue;
         throw error;
@@ -408,7 +419,11 @@ async function fetchVWorld(url, params, keyName = 'key') {
       clearTimeout(timer);
     }
   }
-  throw new ProxyError(504, 'VWORLD_TIMEOUT', 'VWorld 요청 시간이 초과되었습니다.');
+  throw new ProxyError(
+    504,
+    'VWORLD_UPSTREAM_NETWORK_ERROR',
+    'VWorld 서버에 연결하지 못했습니다.',
+  );
 }
 
 function vworldSearchCandidates(body) {
