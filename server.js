@@ -371,6 +371,15 @@ function classifyVWorldResponse(status, body) {
     return new ProxyError(429, 'VWORLD_QUOTA_EXCEEDED', 'VWorld 호출량 제한에 도달했습니다.');
   }
   if (status < 200 || status >= 300 || responseStatus === 'ERROR') {
+    const upstreamCode = String(parsed?.response?.error?.code || 'UNKNOWN')
+      .toUpperCase()
+      .replace(/[^A-Z0-9_]/g, '')
+      .slice(0, 64);
+    console.error('VWorld upstream response rejected', {
+      status,
+      responseStatus: responseStatus || 'UNKNOWN',
+      upstreamCode,
+    });
     return new ProxyError(502, 'VWORLD_UPSTREAM_ERROR', 'VWorld 응답을 처리하지 못했습니다.');
   }
   return null;
