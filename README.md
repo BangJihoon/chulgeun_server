@@ -38,6 +38,12 @@ Flutter 앱은 `LIVE_TRANSIT_PROXY_URL`로 이 서버 주소를 사용하고 `BU
 
 권장 API 경로는 `POST /vworld`, `POST /route`, `POST /live`이며, 현재 서버는 경로보다 JSON 본문의 `provider`를 기준으로 분기합니다. VWorld는 `provider=vworld`, ODsay는 `provider=odsay`, 실시간 공급자는 `provider=seoul_subway`, `national_bus`, `korea_precision_bus`를 사용합니다.
 
+Netlify에 배포할 때는 저장소 루트의 `netlify.toml`과 `netlify/functions/api.js`를 사용합니다. `/vworld`, `/route`, `/live` 요청은 공통 Function으로 전달되며, 인증키는 Netlify 환경변수에만 등록합니다. Netlify 사이트의 Deploy 설정에서 이 저장소를 연결하고 Functions가 포함된 최신 커밋을 배포한 뒤, 다음 주소를 앱의 `PROXY_BASE_URL`로 사용합니다.
+
+    https://illustrious-bonbon-ca1054.netlify.app
+
+배포 후 먼저 `/route`, `/vworld`, `/live`에 POST 요청이 도달하는지 확인해야 합니다. 키가 없는 경우에도 서버는 키 값을 노출하지 않고 `SERVER_CONFIGURATION_ERROR`를 반환합니다.
+
 허용 operation은 `mst_info`, `ps_info`, `rtm_loc_info` 및 VWorld의 `search`, `geocode`, `reverseGeocode`입니다. 서버는 지역코드·페이지·검색어·주소·좌표 입력 검증, 동일 진행 중 요청 병합, 인메모리 요청량 제한, 10초 타임아웃, 5xx 1회 재시도, 인증 오류와 호출량 초과 오류 구분을 수행합니다. 요청·응답 로그에는 serviceKey나 VWorld 키를 기록하지 않습니다.
 
 VWorld는 공식 문서의 실시간 사용 조건을 고려해 영속 응답 캐시를 두지 않고, 동일한 진행 중 요청만 병합합니다. HTTPS 운영 환경에서는 TLS 종료 프록시(Nginx/ALB 등) 뒤에 배치해야 합니다. VWorld 키가 없는 Mock 환경에서는 Flutter가 기존 Mock 경로와 UI를 계속 실행합니다.

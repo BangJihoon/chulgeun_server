@@ -561,7 +561,7 @@ function readBody(request) {
   });
 }
 
-const server = http.createServer(async (request, response) => {
+async function handleRequest(request, response) {
   if (REQUIRE_HTTPS && request.headers['x-forwarded-proto'] !== 'https') {
     sendJson(response, 400, { error: 'HTTPS_REQUIRED' });
     return;
@@ -626,8 +626,13 @@ const server = http.createServer(async (request, response) => {
       message: proxyError.message,
     });
   }
-});
+}
 
-server.listen(PORT, () => {
-  console.log(`chulgeun_master API server listening on ${PORT}`);
-});
+if (require.main === module) {
+  const server = http.createServer(handleRequest);
+  server.listen(PORT, () => {
+    console.log(`chulgeun_master API server listening on ${PORT}`);
+  });
+}
+
+module.exports = { handleRequest };
