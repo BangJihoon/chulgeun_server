@@ -387,7 +387,11 @@ function classifyVWorldResponse(status, body) {
       502,
       'VWORLD_UPSTREAM_ERROR',
       'VWorld 응답을 처리하지 못했습니다.',
-      { upstreamCode },
+      {
+        upstreamStatus: status,
+        upstreamResponseStatus: responseStatus || 'UNKNOWN',
+        upstreamCode,
+      },
     );
   }
   return null;
