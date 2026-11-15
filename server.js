@@ -1,6 +1,8 @@
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
+const dns = require('node:dns');
+const https = require('node:https');
 const { URL, URLSearchParams } = require('node:url');
 
 const PORT = Number(process.env.PORT || 8080);
@@ -393,6 +395,7 @@ function classifyVWorldResponse(status, body) {
 
 async function fetchVWorld(url, params, keyName = 'key') {
   const query = new URLSearchParams({ ...params, [keyName]: VWORLD_KEY });
+  const requestUrl = `${url}?${query.toString()}`;
   let lastError;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const controller = new AbortController();
@@ -406,13 +409,28 @@ async function fetchVWorld(url, params, keyName = 'key') {
         headers.referer = VWORLD_REGISTERED_DOMAIN;
         headers.origin = VWORLD_REGISTERED_DOMAIN.replace(/\/$/, '');
       }
-      const upstream = await fetch(`${url}?${query.toString()}`, {
-        signal: controller.signal,
-        headers,
-      });
-      const body = await upstream.text();
-      const classified = classifyVWorldResponse(upstream.status, body);
-      if (classified && upstream.status >= 500 && attempt === 0) continue;
+      let upstreamStatus;
+      let body;
+      try {
+        const upstream = await fetch(requestUrl, {
+          signal: controller.signal,
+          headers,
+        });
+        upstreamStatus = upstream.status;
+        body = await upstream.text();
+      } catch (error) {
+        console.error('VWorld upstream fetch failed; trying IPv4 fallback', {
+          host: new URL(url).host,
+          attempt: attempt + 1,
+          errorName: error?.name || 'UnknownError',
+          errorCode: error?.cause?.code || error?.code || 'UNKNOWN',
+        });
+        const fallback = await fetchVWorldOverIpv4(requestUrl, headers);
+        upstreamStatus = fallback.status;
+        body = fallback.body;
+      }
+      const classified = classifyVWorldResponse(upstreamStatus, body);
+      if (classified && upstreamStatus >= 500 && attempt === 0) continue;
       if (classified) throw classified;
       return body;
     } catch (error) {
@@ -439,6 +457,36 @@ async function fetchVWorld(url, params, keyName = 'key') {
     'VWORLD_UPSTREAM_NETWORK_ERROR',
     'VWorld 서버에 연결하지 못했습니다.',
   );
+}
+
+function fetchVWorldOverIpv4(requestUrl, headers) {
+  return new Promise((resolve, reject) => {
+    const request = https.get(
+      requestUrl,
+      {
+        headers,
+        timeout: TIMEOUT_MS,
+        lookup(hostname, _options, callback) {
+          dns.lookup(hostname, { family: 4 }, callback);
+        },
+      },
+      (response) => {
+        let body = '';
+        response.setEncoding('utf8');
+        response.on('data', (chunk) => {
+          body += chunk;
+        });
+        response.on('end', () => {
+          resolve({ status: response.statusCode || 0, body });
+        });
+        response.on('error', reject);
+      },
+    );
+    request.on('timeout', () => {
+      request.destroy(new Error('VWorld IPv4 request timeout'));
+    });
+    request.on('error', reject);
+  });
 }
 
 function vworldSearchCandidates(body) {
