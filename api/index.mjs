@@ -1,6 +1,8 @@
-const { Readable } = require('node:stream');
+import { Readable } from 'node:stream';
+import { createRequire } from 'node:module';
 
-const { handleRequest } = require('../server');
+const require = createRequire(import.meta.url);
+const { handleRequest } = require('../server.js');
 
 function requestBody(req) {
   if (typeof req.body === 'string') return req.body;
@@ -9,7 +11,7 @@ function requestBody(req) {
   return '';
 }
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   const request = Readable.from([requestBody(req)]);
   request.method = req.method || 'GET';
   request.headers = Object.fromEntries(
@@ -23,4 +25,4 @@ module.exports = async (req, res) => {
   };
 
   await handleRequest(request, res);
-};
+}
