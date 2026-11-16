@@ -21,6 +21,8 @@ const CACHE_TTL_MS = {
   ps_info: 60 * 60 * 1000,
   rtm_loc_info: 15 * 1000,
 };
+const DEFAULT_VWORLD_REGISTERED_DOMAIN =
+  'https://illustrious-bonbon-ca1054.netlify.app';
 
 const cache = new Map();
 const inFlight = new Map();
@@ -52,7 +54,8 @@ const VWORLD_REGISTERED_DOMAIN = String(
   process.env.VWORLD_REGISTERED_DOMAIN ||
   SERVER_CONFIG.vworld?.registeredDomain ||
   process.env.DEPLOY_PRIME_URL ||
-  process.env.URL || '',
+  process.env.URL ||
+  DEFAULT_VWORLD_REGISTERED_DOMAIN,
 ).trim();
 const VWORLD_SEARCH_URL = 'https://api.vworld.kr/req/search';
 const VWORLD_GEOCODER_URL = 'https://api.vworld.kr/req/address';
