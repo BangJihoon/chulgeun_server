@@ -1,28 +1,46 @@
-import { Readable } from 'node:stream';
 import { createRequire } from 'node:module';
+import { Readable } from 'node:stream';
 
 const require = createRequire(import.meta.url);
 const { handleRequest } = require('../server.js');
 
-function requestBody(req) {
-  if (typeof req.body === 'string') return req.body;
-  if (Buffer.isBuffer(req.body)) return req.body.toString('utf8');
-  if (req.body && typeof req.body === 'object') return JSON.stringify(req.body);
-  return '';
+function nodeRequestFrom(request, body) {
+  const nodeRequest = Readable.from([body]);
+  nodeRequest.method = request.method;
+  nodeRequest.headers = Object.fromEntries(request.headers.entries());
+  nodeRequest.socket = { remoteAddress: 'vercel' };
+  return nodeRequest;
 }
 
-export default async function handler(req, res) {
-  const request = Readable.from([requestBody(req)]);
-  request.method = req.method || 'GET';
-  request.headers = Object.fromEntries(
-    Object.entries(req.headers || {}).map(([key, value]) => [
-      key.toLowerCase(),
-      Array.isArray(value) ? value[0] : value,
-    ]),
-  );
-  request.socket = req.socket || {
-    remoteAddress: request.headers['x-forwarded-for'] || 'vercel',
+function nodeResponseCollector() {
+  let status = 200;
+  let headers = {};
+  let body = '';
+
+  return {
+    writeHead(nextStatus, nextHeaders = {}) {
+      status = nextStatus;
+      headers = nextHeaders;
+    },
+    end(nextBody = '') {
+      body = Buffer.isBuffer(nextBody) ? nextBody.toString('utf8') : String(nextBody);
+    },
+    result() {
+      return { status, headers, body };
+    },
   };
-
-  await handleRequest(request, res);
 }
+
+export default {
+  async fetch(request) {
+    const body = await request.text();
+    const response = nodeResponseCollector();
+    await handleRequest(nodeRequestFrom(request, body), response);
+    const result = response.result();
+    const responseBody = result.status === 204 || result.status === 304 ? null : result.body;
+    return new Response(responseBody, {
+      status: result.status,
+      headers: result.headers,
+    });
+  },
+};
