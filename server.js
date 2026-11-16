@@ -12,6 +12,7 @@ const ODSAY_RATE_LIMIT = Number(process.env.ODSAY_RATE_PER_MINUTE || 20);
 const VWORLD_RATE_LIMIT = Number(process.env.VWORLD_RATE_PER_MINUTE || 30);
 const TIMEOUT_MS = Number(process.env.UPSTREAM_TIMEOUT_MS || 10000);
 const REQUIRE_HTTPS = process.env.REQUIRE_HTTPS === 'true';
+const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 const UPSTREAM_BASE = 'https://apis.data.go.kr/B551982/rte';
 const ALLOWED_OPERATIONS = new Set(['mst_info', 'ps_info', 'rtm_loc_info']);
 const CACHE_TTL_MS = {
@@ -49,12 +50,12 @@ const VWORLD_KEY = String(
 );
 const VWORLD_REGISTERED_DOMAIN = String(
   process.env.VWORLD_REGISTERED_DOMAIN ||
-  SERVER_CONFIG.vworld?.registeredDomain || '',
+  SERVER_CONFIG.vworld?.registeredDomain ||
+  process.env.DEPLOY_PRIME_URL ||
+  process.env.URL || '',
 ).trim();
 const VWORLD_SEARCH_URL = 'https://api.vworld.kr/req/search';
 const VWORLD_GEOCODER_URL = 'https://api.vworld.kr/req/address';
-const VWORLD_ROAD_REVERSE_URL = 'https://apis.vworld.kr/coord2new.do';
-const VWORLD_PARCEL_REVERSE_URL = 'https://apis.vworld.kr/coord2jibun.do';
 const ODSAY_ROUTE_URL = 'https://api.odsay.com/v1/api/searchPubTransPathT';
 
 class ProxyError extends Error {
@@ -70,9 +71,19 @@ function sendJson(response, status, body, extraHeaders = {}) {
   response.writeHead(status, {
     'content-type': 'application/json; charset=utf-8',
     'cache-control': 'no-store',
+    ...corsHeaders(),
     ...extraHeaders,
   });
   response.end(JSON.stringify(body));
+}
+
+function corsHeaders() {
+  return {
+    'access-control-allow-origin': CORS_ORIGIN,
+    'access-control-allow-methods': 'POST, OPTIONS',
+    'access-control-allow-headers': 'content-type',
+    vary: 'Origin',
+  };
 }
 
 function validateRequest(request) {
@@ -580,7 +591,15 @@ async function fetchVWorldOperation(request) {
         errorFormat: 'json',
       });
     });
-    const responses = await Promise.all(calls);
+    const settled = await Promise.allSettled(calls);
+    const responses = settled
+      .filter((result) => result.status === 'fulfilled')
+      .map((result) => result.value);
+    if (responses.length === 0) {
+      const failed = settled.find((result) => result.status === 'rejected');
+      if (failed?.reason) throw failed.reason;
+      throw new ProxyError(502, 'VWORLD_UPSTREAM_ERROR', 'VWorld 응답을 처리하지 못했습니다.');
+    }
     const candidates = responses.flatMap(vworldSearchCandidates);
     const unique = new Map(candidates.map((candidate) => [
       `${candidate.id}|${candidate.address}|${candidate.latitude}|${candidate.longitude}`,
@@ -603,17 +622,19 @@ async function fetchVWorldOperation(request) {
     });
     return vworldGeocodeResult(body);
   }
-  const shared = {
-    x: String(params.longitude),
-    y: String(params.latitude),
-    output: 'json',
-    epsg: 'epsg:4326',
-  };
-  const [roadBody, parcelBody] = await Promise.all([
-    fetchVWorld(VWORLD_ROAD_REVERSE_URL, shared, 'apiKey'),
-    fetchVWorld(VWORLD_PARCEL_REVERSE_URL, shared, 'apiKey'),
-  ]);
-  return vworldReverseResult(roadBody, parcelBody);
+  const body = await fetchVWorld(VWORLD_GEOCODER_URL, {
+    service: 'address',
+    request: 'getAddress',
+    version: '2.0',
+    crs: 'EPSG:4326',
+    point: `${params.longitude},${params.latitude}`,
+    type: 'both',
+    zipcode: 'true',
+    simple: 'false',
+    format: 'json',
+    errorFormat: 'json',
+  });
+  return vworldReverseResult(body, body);
 }
 
 async function handleVWorld(request, response, clientAddress) {
@@ -644,6 +665,11 @@ function readBody(request) {
 }
 
 async function handleRequest(request, response) {
+  if (request.method === 'OPTIONS') {
+    response.writeHead(204, corsHeaders());
+    response.end();
+    return;
+  }
   if (REQUIRE_HTTPS && request.headers['x-forwarded-proto'] !== 'https') {
     sendJson(response, 400, { error: 'HTTPS_REQUIRED' });
     return;
@@ -672,6 +698,7 @@ async function handleRequest(request, response) {
       response.writeHead(result.status, {
         'content-type': result.contentType,
         'cache-control': 'no-store',
+        ...corsHeaders(),
         'x-proxy-cache': result.cache,
       });
       response.end(result.body);
@@ -692,6 +719,7 @@ async function handleRequest(request, response) {
     response.writeHead(result.status, {
       'content-type': result.contentType,
       'cache-control': 'no-store',
+      ...corsHeaders(),
       'x-proxy-cache': result.cache,
     });
     response.end(result.body);
