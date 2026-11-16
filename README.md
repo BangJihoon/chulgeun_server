@@ -1,6 +1,6 @@
 # chulgeun_master API 서버
 
-Node 20 내장 모듈만 사용하는 보호 API 서버입니다. Flutter 앱에는 VWorld 인증키를 넣지 않습니다. VWorld 키는 이 디렉터리의 로컬 `config.json`에만 직접 입력합니다.
+Node.js 내장 모듈만 사용하는 보호 API 서버입니다. Flutter 앱에는 VWorld 인증키를 넣지 않습니다. VWorld 키는 이 디렉터리의 로컬 `config.json`에만 직접 입력합니다.
 
 ## 실행
 

@@ -4,7 +4,7 @@
   "version": "0.7.0",
   "description": "Protected API server for chulgeun_master external APIs",
   "engines": {
-    "node": ">=20"
+    "node": "24.x"
   },
   "scripts": {
     "start": "node server.js"
