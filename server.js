@@ -55,6 +55,7 @@ const VWORLD_REGISTERED_DOMAIN = String(
   SERVER_CONFIG.vworld?.registeredDomain ||
   process.env.DEPLOY_PRIME_URL ||
   process.env.URL ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '') ||
   DEFAULT_VWORLD_REGISTERED_DOMAIN,
 ).trim();
 const VWORLD_SEARCH_URL = 'https://api.vworld.kr/req/search';

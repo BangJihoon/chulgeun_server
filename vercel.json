@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "functions": {
+    "api/index.js": {
+      "runtime": "nodejs20.x",
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    { "source": "/vworld", "destination": "/api/index" },
+    { "source": "/route", "destination": "/api/index" },
+    { "source": "/live", "destination": "/api/index" }
+  ]
+}

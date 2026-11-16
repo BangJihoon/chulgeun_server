@@ -38,7 +38,22 @@ Flutter 앱은 `LIVE_TRANSIT_PROXY_URL`로 이 서버 주소를 사용하고 `BU
 
 권장 API 경로는 `POST /vworld`, `POST /route`, `POST /live`이며, 현재 서버는 경로보다 JSON 본문의 `provider`를 기준으로 분기합니다. VWorld는 `provider=vworld`, ODsay는 `provider=odsay`, 실시간 공급자는 `provider=seoul_subway`, `national_bus`, `korea_precision_bus`를 사용합니다.
 
-Netlify에 배포할 때는 저장소 루트의 `netlify.toml`과 `netlify/functions/api.js`를 사용합니다. `/vworld`, `/route`, `/live` 요청은 공통 Function으로 전달되며, 인증키는 Netlify 환경변수에만 등록합니다. Netlify 사이트의 Deploy 설정에서 이 저장소를 연결하고 Functions가 포함된 최신 커밋을 배포한 뒤, 다음 주소를 앱의 `PROXY_BASE_URL`로 사용합니다.
+Vercel 배포는 저장소 루트의 `vercel.json`과 `api/index.js`를 사용합니다. `/vworld`, `/route`, `/live` 요청은 공통 Serverless Function으로 전달됩니다. Vercel 프로젝트의 Environment Variables에 인증키를 등록하고, 배포 후 생성된 도메인을 `VWORLD_REGISTERED_DOMAIN`과 `CORS_ORIGIN`에 반영합니다. Flutter 앱은 배포 도메인을 `PROXY_BASE_URL` 또는 `DEFAULT_PROXY_BASE_URL`로 사용합니다.
+
+Vercel 프로젝트 설정 예시는 다음과 같습니다.
+
+```text
+VWORLD_API_KEY=발급받은 VWorld 키
+VWORLD_REGISTERED_DOMAIN=https://your-vercel-domain.vercel.app
+ODSAY_API_KEY=발급받은 ODsay 키
+DATA_GO_KR_BUS_KEY=발급받은 공공데이터 키(사용 시)
+CORS_ORIGIN=https://your-vercel-domain.vercel.app
+REQUIRE_HTTPS=true
+```
+
+`VWORLD_REGISTERED_DOMAIN`은 VWorld 인증키에 등록한 서비스 URL과 동일해야 합니다. Vercel이 제공하는 `VERCEL_URL`은 보조 기본값으로만 사용하며, 인증키 등록 URL이 확정되면 환경변수를 명시적으로 설정합니다. 키 값은 답변·Git·로그에 넣지 않습니다.
+
+기존 Netlify 배포는 `netlify.toml`과 `netlify/functions/api.js`를 통해 계속 유지할 수 있지만, 새 운영 전환 후에는 Flutter의 프록시 기본값을 Vercel 도메인으로 변경합니다.
 
 `PORT`, `VWORLD_CONFIG_PATH`, `UPSTREAM_TIMEOUT_MS`는 인증키가 아닌 런타임 설정이며 저장소의 기본값·예시에도 의도적으로 포함됩니다. Netlify Secret Scanning이 이 값들을 인증정보로 오인하지 않도록 `netlify.toml`에서 해당 환경변수 이름만 제외합니다. `ODSAY_API_KEY`, `VWORLD_API_KEY`, `DATA_GO_KR_BUS_KEY` 값은 계속 스캔 제외 대상이 아니며 소스·로그·응답에 넣지 않습니다.
 
