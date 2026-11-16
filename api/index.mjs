@@ -1,8 +1,7 @@
-import { createRequire } from 'node:module';
 import { Readable } from 'node:stream';
+import serverModule from '../server.js';
 
-const require = createRequire(import.meta.url);
-const { handleRequest } = require('../server.js');
+const { handleRequest } = serverModule;
 
 function nodeRequestFrom(request, body) {
   const nodeRequest = Readable.from([body]);
