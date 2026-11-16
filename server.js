@@ -433,6 +433,13 @@ async function fetchVWorld(url, params, keyName = 'key') {
         });
         upstreamStatus = upstream.status;
         body = await upstream.text();
+        if (upstreamStatus >= 500) {
+          const fallback = await fetchVWorldOverIpv4(requestUrl, headers);
+          if (fallback.status > 0 && fallback.status < upstreamStatus) {
+            upstreamStatus = fallback.status;
+            body = fallback.body;
+          }
+        }
       } catch (error) {
         console.error('VWorld upstream fetch failed; trying IPv4 fallback', {
           host: new URL(url).host,
